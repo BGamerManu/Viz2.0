@@ -38,10 +38,10 @@ server:on("headline", function(data)
 
     if data.Type == "Hide-Headline" then 
         if data.Regional == nil then
-            if Single then HideHeadlineSingle() else HideHeadlineDouble() end
+            HideHeadline()
         else
             if data.Regional == false then
-                if Single then HideHeadlineSingle() else HideHeadlineDouble() end
+                HideHeadline()
             else 
                 RemoveShitHeadline()
             end
@@ -51,12 +51,12 @@ server:on("headline", function(data)
     end
 
     if data.Type == "Show-Headline-KeepText" then
-        if Single then PlayoutShowHeadlineSingle(KeepBottomText) else PlayoutShowHeadlineDouble(KeepBottomText, KeepTopText) end
+        PlayoutShowHeadline(KeepBottomText)
     end
 
 
     if data.Type == "Show-TitleLogo" then
-        ShowTitleLogo()
+        ShowTitleLogo(data.Style)
     end
 
     if data.Type == "Hide-TitleLogo" then
@@ -141,6 +141,34 @@ server:on("headline", function(data)
 
     if data.Type == "Hide-Clock" then
         HideLowerThirdClock()
+    end
+
+    if data.Type == "Show-Clock" then
+        ShowLowerThirdClock()
+    end
+
+    if data.Type == "Show-TickerOnly" then
+        ShowTickerOnly()
+    end
+
+    if data.Type == "Hide-TickerOnly" then
+        HideTickerOnly()
+    end
+
+    if data.Type == "Toggle-Backdrop" then
+        ToggleBackdrop()
+    end
+
+    if data.Type == "Toggle-GillMode" then
+        ToggleGillMode()
+    end
+
+    if data.Type == "Hide-Splash" then
+        HideSplash()
+    end
+
+    if data.Type == "Toggle-WindowMode" then
+        ToggleWindowMode()
     end
 
     if data.Type == "Remove-ProgramBadge" then

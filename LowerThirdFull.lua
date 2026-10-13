@@ -72,6 +72,9 @@ LowerThirdFull = {
         OldText = "",
         OldFont = nil,
         OldY = 0,
+
+        --The BREAKING / headline layout has a headline after BREAKING (it is optional)
+        HasHeadline = false,
     },
 
     --What the breaking strap is showing: nil (not up), "title" (BREAKING / headline), "single" or "double" (text lines)
@@ -188,6 +191,9 @@ LowerThirdFull = {
     },
     ProgramBadgeShowing = false,
     ProgramBadgeShouldShow = false,
+
+    --The programme badge to bring back with the bar. ProgramBadge itself is shared with the info badges (socials, credit).
+    ProgramBadgeDef = nil,
 
     --This one is next to the BBC News Box on the lower third
     LowerThirdBox = {
@@ -534,7 +540,9 @@ function ShowLowerThirdFull()
         --make sure program badge is in the right place
         LowerThirdFull.ProgramBadge.y = 940+48
         LowerThirdFull.ProgramBadge.scissorY = 940
-        Timer.after(0.9, function() ShowProgramBadge(LowerThirdFull.ProgramBadge.Text, LowerThirdFull.ProgramBadge.tcol, LowerThirdFull.ProgramBadge.bcol) end)
+        --(it was just dropped out of sight, whichever badge was in the slot)
+        LowerThirdFull.ProgramBadgeShowing = false
+        Timer.after(0.9, function() ShowProgramBadge(LowerThirdFull.ProgramBadgeDef.Text, LowerThirdFull.ProgramBadgeDef.tcol, LowerThirdFull.ProgramBadgeDef.bcol) end)
     end
 
     Timer.after(0.3, function () ShowLowerThirdClock() end)
@@ -1452,9 +1460,14 @@ local function UpdateBreakingTitle(text)
     if LowerThirdFull.BreakingMode == "title" then
         if box.Text1Showing == true then
             --BREAKING is on screen, the new headline just waits below it for the next scroll
-            box.Text2, box.Font2, box.Text2Y = text, font, 110+yAdjusted
+            box.Text2, box.Font2, box.Text2Y, box.HasHeadline = text, font, 110+yAdjusted, text ~= ""
+        elseif text == "" then
+            --No headline any more: it rolls out and BREAKING comes back
+            box.HasHeadline = false
+            AdvanceBreakingTitle()
         else
             --The headline is on screen: it rolls out of the top as the new one rolls in from below
+            box.HasHeadline = true
             local gone = box.Text2
             box.OldText, box.OldFont, box.OldY = gone, box.Font2, box.Text2Y
             Anim.to(box, 0.8, {OldY = -110}):ease("cubicout"):oncomplete(function()
@@ -1474,7 +1487,7 @@ local function UpdateBreakingTitle(text)
 
     LowerThirdFull.BreakingMode = "title"
     box.Text1, box.Text1Y, box.Text1Showing = "BREAKING", 110, true
-    box.Text2, box.Font2, box.Text2Y, box.Text2Showing = text, font, 110+yAdjusted, false
+    box.Text2, box.Font2, box.Text2Y, box.Text2Showing, box.HasHeadline = text, font, 110+yAdjusted, false, text ~= ""
     Anim.to(box, 0.8, {Text1Y = 0}):ease("cubicout")
 end
 
@@ -1512,6 +1525,7 @@ function ShowBreakingTitle(text)
         --Expand the breaking part up
 
         LowerThirdFull.BreakingMode = "title"
+        LowerThirdFull.BreakingBox.HasHeadline = text ~= ""
         LowerThirdFull.BreakingBox.OldText = ""
         LowerThirdFull.BreakingBox.Text1Y = 0
         LowerThirdFull.LowerThirdTitle.Text = ""
@@ -1543,8 +1557,9 @@ function ShowBreakingTitle(text)
 end
 
 function AdvanceBreakingTitle()
-    --Only the BREAKING / headline layout has something to scroll between
+    --Only the BREAKING / headline layout has something to scroll between, and only with a headline
     if LowerThirdFull.BreakingMode ~= "title" then return end
+    if LowerThirdFull.BreakingBox.Text1Showing == true and not LowerThirdFull.BreakingBox.HasHeadline then return end
 
     --Change offsetts
     if LowerThirdFull.BreakingBox.Text1Showing == true then
@@ -1737,42 +1752,84 @@ function HideBreakingLowerThird()
      --Move BBC text down
      Anim.to(LowerThirdFull.BBCText, 0.8, {y = restY - 6}):ease("cubicinout"):delay(delay)
 
-     if LowerThirdFull.ProgramBadgeShouldShow == true then
-        Timer.after(1.5, function() ShowProgramBadge(LowerThirdFull.ProgramBadge.Text, LowerThirdFull.ProgramBadge.tcol, LowerThirdFull.ProgramBadge.bcol) end)
+     if LowerThirdFull.ProgramBadgeShowing == true then
+        --The badge went up with the strap, it comes back down with it
+        Anim.to(LowerThirdFull.ProgramBadge, 0.8, {y = 940}):ease("cubicinout"):delay(delay)
+        Anim.to(LowerThirdFull.ProgramBadge, 0.8, {scissorY = 940}):ease("cubicinout"):delay(delay)
+     elseif LowerThirdFull.ProgramBadgeShouldShow == true then
+        --The BREAKING headline took the badge off screen, bring it back
+        Timer.after(1.5, function() ShowProgramBadge(LowerThirdFull.ProgramBadgeDef.Text, LowerThirdFull.ProgramBadgeDef.tcol, LowerThirdFull.ProgramBadgeDef.bcol) end)
      end
 end
 
-function ShowProgramBadge(text, tcolor, bcolor) 
-    LowerThirdFull.ProgramBadgeShouldShow = true
+--Row the badges sit in: the bottom row of the bar, or the top row of the strap while a text or breaking strap is up
+local function badgeRestY()
+    if LowerThirdFull.LowerThirdTitleShowing == true or LowerThirdFull.BreakingMode ~= nil then
+        return 940-120
+    end
 
-    if LowerThirdFull.ProgramBadgeShowing == true then 
+    return 940
+end
+
+--Bring the badge up from below its row. Its clip window has to be on that row too, or it is not drawn.
+local function badgeIn()
+    local badge = LowerThirdFull.ProgramBadge
+    local rest = badgeRestY()
+
+    badge.scissorY = rest
+    badge.y = rest+48
+    Anim.to(badge, 0.5, {y = rest, scissorY = rest}):ease("cubicout")
+end
+
+--Take the badge out of the top of its clip window
+local function badgeOut()
+    local badge = LowerThirdFull.ProgramBadge
+
+    return Anim.to(badge, 0.5, {y = badge.scissorY-48}):ease("cubicin")
+end
+
+--The black behind a text only badge is not needed when a bar or a strap is already black there
+local function badgeBackdrop()
+    if LowerThirdFull.PresenterNameShowing == true or LowerThirdFullShowing == true or LowerThirdFull.LowerThirdTitleShowing == true or LowerThirdFull.BreakingMode ~= nil then
+        return {0,0,0,0}
+    end
+
+    return {0,0,0,0.8}
+end
+
+function ShowProgramBadge(text, tcolor, bcolor)
+    LowerThirdFull.ProgramBadgeShouldShow = true
+    LowerThirdFull.ProgramBadgeDef = {Text = text, tcol = tcolor, bcol = bcolor}
+
+    if LowerThirdFull.ProgramBadgeShowing == true then
         HideProgramBadge()
         Timer.after(0.7, function() ShowProgramBadge(text, tcolor, bcolor) end)
-        return 
+        return
     end
 
     LowerThirdFull.ProgramBadgeShowing = true
     LowerThirdFull.ProgramBadge.Text = text
     LowerThirdFull.ProgramBadge.tcol = tcolor
     LowerThirdFull.ProgramBadge.bcol = bcolor
+
+    --The plain programme badge shape (an info badge before it may have left its own)
+    LowerThirdFull.ProgramBadge.h = 48
     LowerThirdFull.ProgramBadge.BoxYOffset = 0
+    LowerThirdFull.ProgramBadge.TextYOffset = 0
 
     --Program badge X must be aligned to the right of the screen 100px from the edge
     TextWidth = LowerThirdFull.ProgramBadge.Font:getWidth(LowerThirdFull.ProgramBadge.Text)
     LowerThirdFull.ProgramBadge.w = TextWidth + 20
     LowerThirdFull.ProgramBadge.x = 1920-295 - TextWidth
 
-    --Move program badge to the bottom
-    LowerThirdFull.ProgramBadge.y = 940+48
-
-    --Move program badge up
-    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {y = 940}):ease("cubicout")
+    --Move program badge up from the bottom
+    badgeIn()
 end
 
 function HideProgramBadge()
     LowerThirdFull.ProgramBadgeShowing = false
-    
-    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {y = 892}):ease("cubicin")
+
+    badgeOut()
 end
 
 function SetProgramBadge(text, tcolor, bcolor)
@@ -1780,6 +1837,7 @@ function SetProgramBadge(text, tcolor, bcolor)
 
     LowerThirdFull.ProgramBadge.tcol = stringToTable(tcolor)
     LowerThirdFull.ProgramBadge.bcol = stringToTable(bcolor)
+    LowerThirdFull.ProgramBadgeDef = {Text = text, tcol = LowerThirdFull.ProgramBadge.tcol, bcol = LowerThirdFull.ProgramBadge.bcol}
 
     --Program badge X must be aligned to the right of the screen 100px from the edge
     TextWidth = LowerThirdFull.ProgramBadge.Font:getWidth(LowerThirdFull.ProgramBadge.Text)
@@ -1795,18 +1853,14 @@ function RemoveProgramBadge()
 end
 
 function ShowInfoBadge(text)
-    if LowerThirdFull.ProgramBadgeShowing == true then 
+    if LowerThirdFull.ProgramBadgeShowing == true then
         HideInfoBadge()
         Timer.after(0.7, function() ShowInfoBadge(text) end)
-        return 
+        return
     end
 
-    --If the presenter name is showing, hide this clear part
-    if LowerThirdFull.PresenterNameShowing == true or LowerThirdFullShowing == true then
-        LowerThirdFull.ProgramBadge.ClearPartCol = {0,0,0,0}
-    else
-        LowerThirdFull.ProgramBadge.ClearPartCol = {0,0,0,0.8}
-    end
+    --If a bar, strap or the presenter name is showing, hide this clear part
+    LowerThirdFull.ProgramBadge.ClearPartCol = badgeBackdrop()
 
     LowerThirdFull.ProgramBadgeShowing = true
     LowerThirdFull.ProgramBadge.Text = text
@@ -1818,40 +1872,28 @@ function ShowInfoBadge(text)
     LowerThirdFull.ProgramBadge.w = TextWidth + 20
     LowerThirdFull.ProgramBadge.x = 1920-295 - TextWidth
 
-    --Move program badge to the bottom
-    LowerThirdFull.ProgramBadge.y = 940+48
-
-    --Move program badge up
-    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {y = 940}):ease("cubicout")
+    --Move program badge up from the bottom
+    LowerThirdFull.ProgramBadge.h = 48
+    LowerThirdFull.ProgramBadge.BoxYOffset = 0
+    badgeIn()
 
     LowerThirdFull.ProgramBadge.TextYOffset = -5
 
-    
-    Timer.after(0.75, function() 
-        LowerThirdFull.ProgramBadge.h = 5
-    end)
-
-    --Move program badge up back down
-    Timer.after(0.3, function() 
-       
-        Anim.to(LowerThirdFull.ProgramBadge, 0.5, {BoxYOffset = 43}):ease("cubicinout")
-    end)
+    --The box shrinks to a line under the text. Animations, not timers: the ticker clears every timer when it stops.
+    Anim.to(LowerThirdFull.ProgramBadge, 0.001, {h = 5}):delay(0.75)
+    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {BoxYOffset = 43}):ease("cubicinout"):delay(0.3)
 end
 
 
 function ShowCreditBadge(text)
-    if LowerThirdFull.ProgramBadgeShowing == true then 
+    if LowerThirdFull.ProgramBadgeShowing == true then
         HideInfoBadge()
         Timer.after(0.7, function() ShowCreditBadge(text) end)
-        return 
+        return
     end
 
-    --If the presenter name is showing, hide this clear part
-    if LowerThirdFull.PresenterNameShowing == true or LowerThirdFullShowing == true then
-        LowerThirdFull.ProgramBadge.ClearPartCol = {0,0,0,0}
-    else
-        LowerThirdFull.ProgramBadge.ClearPartCol = {0,0,0,0.8}
-    end
+    --If a bar, strap or the presenter name is showing, hide this clear part
+    LowerThirdFull.ProgramBadge.ClearPartCol = badgeBackdrop()
 
     LowerThirdFull.ProgramBadgeShowing = true
     LowerThirdFull.ProgramBadge.Text = text
@@ -1863,31 +1905,17 @@ function ShowCreditBadge(text)
     LowerThirdFull.ProgramBadge.w = TextWidth + 20
     LowerThirdFull.ProgramBadge.x = 1920-295 - TextWidth
 
-    --Move program badge to the bottom
-    LowerThirdFull.ProgramBadge.y = 940+48
-
-    --Move program badge up
-    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {y = 940}):ease("cubicout")
+    --Move program badge up from the bottom
+    LowerThirdFull.ProgramBadge.h = 48
+    LowerThirdFull.ProgramBadge.BoxYOffset = 0
+    badgeIn()
 
     LowerThirdFull.ProgramBadge.TextYOffset = -2
 
-    
-    Timer.after(0.75, function() 
-        LowerThirdFull.ProgramBadge.h = 5
-    end)
-
-    --Move program badge up back down
-    Timer.after(0.3, function() 
-       
-        Anim.to(LowerThirdFull.ProgramBadge, 0.5, {BoxYOffset = 43}):ease("cubicinout")
-    end)
+    --The box shrinks to a line under the text (see ShowInfoBadge)
+    Anim.to(LowerThirdFull.ProgramBadge, 0.001, {h = 5}):delay(0.75)
+    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {BoxYOffset = 43}):ease("cubicinout"):delay(0.3)
 end
-
-
-
-
-
-
 
 
 
@@ -1895,15 +1923,15 @@ end
 
 function HideInfoBadge()
     LowerThirdFull.ProgramBadgeShowing = false
-    
-    Anim.to(LowerThirdFull.ProgramBadge, 0.5, {y = 892}):ease("cubicin")
 
-    Timer.after(0.5, function() 
+    --Once it is out of sight it is the plain programme badge shape again (unless a badge came in meanwhile)
+    badgeOut():oncomplete(function()
+        if LowerThirdFull.ProgramBadgeShowing == true then return end
+
         LowerThirdFull.ProgramBadge.TextYOffset = 0
         LowerThirdFull.ProgramBadge.BoxYOffset = 0
 
         LowerThirdFull.ProgramBadge.h = 48
-
     end)
 end
 

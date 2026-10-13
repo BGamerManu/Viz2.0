@@ -12,7 +12,6 @@ inspect = require "lib.inspect"
 push = require "lib.push"
 local sock = require "lib.sock"
 local ShowBG = false
-KeepTopText = ""
 KeepBottomText = ""
 EnableBadge = false
 shouldUsePush = false
@@ -139,7 +138,7 @@ function love.draw()
 
     DrawLowerThirdClock()
 
-    if Single then DrawHeadlineSingle() else DrawHeadlineDouble() end
+    DrawHeadlineSingle()
 
     if waterMark == true then
         love.graphics.setColor(1,1,1,waterMarkFade.a)
@@ -174,6 +173,55 @@ function love.draw()
 
     if shouldUsePush == true then push:finish() end
 end
+--Keyboard shortcuts that VizHelper's Testing area can trigger too
+function ToggleBackdrop()
+    ShowBG = not ShowBG
+end
+
+function HideSplash()
+    Timer.tween(0.8, waterMarkFade, {a = 0}, "in-out-cubic", function()
+        waterMark = false
+    end)
+end
+
+function ToggleGillMode()
+    if showGillModeNoticeTimer ~= nil then Timer.cancel(showGillModeNoticeTimer) end
+
+    gillMode = not gillMode
+    showGillModeNotice = true
+
+
+    showGillModeNoticeTimer = Timer.after(2, function()
+        showGillModeNotice = false
+    end)
+
+    if gillMode == true then
+        if TitleLogo.image == newsTitle then
+            TitleLogo.image = newsTitleGill
+        elseif TitleLogo.image == worldTitle then
+            TitleLogo.image = worldTitleGill
+        end
+    else
+        if TitleLogo.image == newsTitleGill then
+            TitleLogo.image = newsTitle
+        elseif TitleLogo.image == worldTitleGill then
+            TitleLogo.image = worldTitle
+        end
+    end
+end
+
+function ToggleWindowMode()
+    shouldUsePush = not shouldUsePush
+    if shouldUsePush == true then
+        local gameWidth, gameHeight = 1920,1080 --fixed game resolution
+        local windowWidth, windowHeight = 1280,720
+
+        push:setupScreen(gameWidth, gameHeight, windowWidth, windowHeight, {resizable = true,canvas = true, fullscreen = false})
+    else
+        love.window.setMode(1920,1080, {resizable = false, fullscreen = false})
+    end
+end
+
 function love.keypressed(key)
     if key == "escape" then love.event.quit() end
 
@@ -215,7 +263,7 @@ function love.keypressed(key)
     end
 
     if key == "kp*" then
-        ShowBG = not ShowBG
+        ToggleBackdrop()
     end
 
     if key == "kp1" then
@@ -269,30 +317,7 @@ function love.keypressed(key)
     end
 
     if key == "g" then
-        if showGillModeNoticeTimer ~= nil then Timer.cancel(showGillModeNoticeTimer) end
-
-        gillMode = not gillMode
-        showGillModeNotice = true
-
-
-        showGillModeNoticeTimer = Timer.after(2, function()
-            showGillModeNotice = false
-        end)
-
-        if gillMode == true then
-            if TitleLogo.image == newsTitle then
-                TitleLogo.image = newsTitleGill
-            elseif TitleLogo.image == worldTitle then
-                TitleLogo.image = worldTitleGill
-            end
-        else
-            if TitleLogo.image == newsTitleGill then
-                TitleLogo.image = newsTitle
-            elseif TitleLogo.image == worldTitleGill then
-                TitleLogo.image = worldTitle
-            end
-        end
-           
+        ToggleGillMode()
     end
 
     if key == "s" then
@@ -301,29 +326,19 @@ function love.keypressed(key)
 
 
     if key == "=" then
-        ShowChameleon()
+        ShowTitleLogo("chameleon")
     end
 
     if key == "-" then
-        HideChameleon()
+        HideTitleLogo()
     end
 
     if key == "n" then
-        Timer.tween(0.8, waterMarkFade, {a = 0}, "in-out-cubic", function()
-            waterMark = false
-        end)
+        HideSplash()
     end
 
     if key == "f11" then
-        shouldUsePush = not shouldUsePush
-        if shouldUsePush == true then
-            local gameWidth, gameHeight = 1920,1080 --fixed game resolution
-            local windowWidth, windowHeight = 1280,720
-
-            push:setupScreen(gameWidth, gameHeight, windowWidth, windowHeight, {resizable = true,canvas = true, fullscreen = false})
-        else
-            love.window.setMode(1920,1080, {resizable = false, fullscreen = false})
-        end
+        ToggleWindowMode()
     end
 
 end

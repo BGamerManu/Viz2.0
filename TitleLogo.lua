@@ -2,6 +2,9 @@ TitleLogo = {
     image = newsTitle,
     c = {1,1,1,0},
     Showing = false,
+
+    --"legacy": the red boxed BBC NEWS logo, "chameleon": the BBC blocks with the channel name under them
+    Style = "legacy",
 }
 
 
@@ -16,7 +19,6 @@ Chameleon = {
     newsy = 895,
     newscol = {1,1,1,1},
     newsfont = love.graphics.newFont("fonts/ReithSansBd.ttf", 93),
-    newstext = "NEWS",
 }
 
 Chameleon.bimg:setFilter("nearest","nearest")
@@ -32,33 +34,52 @@ function DrawTitleLogo()
     love.graphics.draw(Chameleon.bimg, 913, Chameleon.by, 0, 0.13)
     love.graphics.draw(Chameleon.cimg, 1032, Chameleon.ny, 0, 0.13)
 
+    --The text under the blocks is the channel name from the branding ("NEWS", "WORLD NEWS"...),
+    --centred where "NEWS" has always been
+    local channel = Headline.BBCText.Text
     love.graphics.setColor(Chameleon.newscol)
     love.graphics.setFont(Chameleon.newsfont)
-    love.graphics.print(Chameleon.newstext, 832, Chameleon.newsy)
+    love.graphics.print(channel, 832 + (Chameleon.newsfont:getWidth("NEWS") - Chameleon.newsfont:getWidth(channel)) / 2, Chameleon.newsy)
 end
 
 
-function ShowTitleLogo()
-    if HeadlineShowing then
-        if Single then HideHeadlineSingle() else HideHeadlineDouble() end
-        Timer.after(1, function() ShowTitleLogo() end)
+--style is "chameleon" or anything else for the legacy red boxed logo
+function ShowTitleLogo(style)
+    style = style == "chameleon" and "chameleon" or "legacy"
+
+    if TitleLogo.Showing and TitleLogo.Style ~= style then
+        HideTitleLogo()
+        Timer.after(1, function() ShowTitleLogo(style) end)
+    elseif HeadlineShowing then
+        HideHeadline()
+        Timer.after(1, function() ShowTitleLogo(style) end)
     elseif LowerThirdFull.LowerThirdShowing then
         HideLowerThirdFull()
-        Timer.after(1, function() ShowTitleLogo() end)
+        Timer.after(1, function() ShowTitleLogo(style) end)
     else
-        Anim.to(TitleLogo.c, 0.3, {1,1,1,1})
+        TitleLogo.Style = style
+        if style == "chameleon" then
+            ShowChameleon()
+        else
+            Anim.to(TitleLogo.c, 0.3, {1,1,1,1})
+        end
         TitleLogo.Showing = true
     end
 end
 
 function HideTitleLogo()
-    Anim.to(TitleLogo.c, 0.8, {1,1,1,0})
+    if TitleLogo.Style == "chameleon" then
+        HideChameleon()
+    else
+        Anim.to(TitleLogo.c, 0.8, {1,1,1,0})
+    end
     TitleLogo.Showing = false
 end
 
 function ShowTitleLogoInstant()
     HideLowerThirdFull()
 
+    TitleLogo.Style = "legacy"
     TitleLogo.c = {1,1,1,1}
     TitleLogo.Showing = true
 end
@@ -66,6 +87,7 @@ end
 function HideTitleLogoInstant()
 	TitleLogo.c = {1,1,1,0}
 	TitleLogo.Showing = false
+	HideChameleonInstant()
 end
 
 
