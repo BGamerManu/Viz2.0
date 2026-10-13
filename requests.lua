@@ -80,11 +80,11 @@ server:on("headline", function(data)
     end
 
     if data.Type == "Show-PlaceName" then
-        ShowPlaceName(data.Text)
+        ShowPlaceName(data.Text, data.Side)
     end
 
     if data.Type == "Show-PlaceNameWithTime" then
-        ShowPlaceNameWithTime(data.Text, data.Offset)
+        ShowPlaceNameWithTime(data.Text, data.Offset, data.Side)
     end
 
     if data.Type == "Hide-PlaceName" then
@@ -296,12 +296,9 @@ server:on("headline", function(data)
 
         --Remove first item from table and put it in a var
         local first = table.remove(split, 1)
+        if first == nil then return end
 
-        if LowerThirdFull.LowerThirdBoxShowing == true then
-            UpdateLowerThirdText(first,split)
-            return
-        end
-        
+        --Shows the strap, or changes its text if it is already up (one line or two lines)
         ShowBreakingLowerThird(first, split)
     end
 
@@ -390,7 +387,11 @@ server:on("headline", function(data)
         local first = table.remove(split, 1)
 
         if LowerThirdFull.LowerThirdTitleShowing == true then
-            UpdateLowerThirdText(first, split)
+            if LowerThirdFull.SingleText.Showing == true and (split[1] == nil or split[1] == "NOP") then
+                UpdateSingleText(first)
+            else
+                UpdateLowerThirdText(first, split)
+            end
             return
         end
         
