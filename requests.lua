@@ -414,12 +414,9 @@ server:on("headline", function(data)
         --Remove first item from table and put it in a var
         local first = table.remove(split, 1)
 
+        --The text strap is up: change its text in place, from one line to two lines and back too
         if LowerThirdFull.LowerThirdTitleShowing == true then
-            if LowerThirdFull.SingleText.Showing == true and (split[1] == nil or split[1] == "NOP") then
-                UpdateSingleText(first)
-            else
-                UpdateLowerThirdText(first, split)
-            end
+            UpdateTextStrap(first, split)
             return
         end
         

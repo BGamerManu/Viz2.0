@@ -267,17 +267,54 @@ local function rollOutDouble()
     local title, sub1, sub2 = LowerThirdFull.LowerThirdTitle, LowerThirdFull.LowerThirdSubtitle1, LowerThirdFull.LowerThirdSubtitle2
     Anim.to(title, 0.8, {y = title.y - 120}):ease("cubicinout")
     Anim.to(sub1, 0.8, {y = sub1.y - 120}):ease("cubicinout")
-    Anim.to(sub2, 0.8, {y = sub2.y - 120}):ease("cubicinout"):oncomplete(function()
+    Anim.to(sub2, 0.8, {y = sub2.y - 120}):ease("cubicinout")
+
+    --Park them once all three are out of sight. A tween of its own does it: the order the three above complete in is not defined,
+    --and a late one would put its text back where it ends
+    Anim.to({}, 0.85, {}):oncomplete(function()
         title.y, sub1.y, sub2.y = 980, 1060, 1110
         LowerThirdFull.LowerThirdTitleChanging = false
     end)
 end
 
---Roll whatever the breaking strap is showing out of the top, its replacement comes in from below
-local function rollOutBreakingContent()
-    local mode = LowerThirdFull.BreakingMode
+--A strap line is single (no subtitle) or double (title and subtitles)
+local function isSingle(subtitles)
+    return subtitles[1] == nil or subtitles[1] == "" or subtitles[1] == "NOP"
+end
 
-    if mode == "title" then
+--What a strap says, to tell whether the text of the text strap and of the breaking strap is the same
+local function strapKey(text, subtitles)
+    if isSingle(subtitles) then return text end
+    return text.."\n"..subtitles[1].."\n"..(subtitles[2] or "")
+end
+
+--What the strap that is up is showing: "single" or "double" (text strap or breaking strap), "title" (BREAKING / headline) or nil
+local function currentLayout()
+    if LowerThirdFull.LowerThirdTitleShowing == true then
+        return LowerThirdFull.SingleText.Showing == true and "single" or "double"
+    end
+
+    return LowerThirdFull.BreakingMode
+end
+
+--Bring the title and subtitles of a two line strap up from below it
+local function rollInDouble(text, subtitles)
+    local title, sub1, sub2 = LowerThirdFull.LowerThirdTitle, LowerThirdFull.LowerThirdSubtitle1, LowerThirdFull.LowerThirdSubtitle2
+
+    title.Text = text
+    sub1.Text = subtitles[1]
+    sub2.Text = subtitles[2]
+
+    if subtitles[2] ~= nil and subtitles[2] ~= "NOP" then LoopBetweenSubtitles() end
+
+    Anim.to(title, 1, {y = 980-120}):ease("cubicinout")
+    Anim.to(sub1, 1, {y = 980-50}):ease("cubicinout")
+    Anim.to(sub2, 1, {y = 980}):ease("cubicinout")
+end
+
+--Roll whatever the strap is showing (see currentLayout) out of the top, its replacement comes in from below
+local function rollOutContent(layout)
+    if layout == "title" then
         local box = LowerThirdFull.BreakingBox
         if box.Text1Showing == true then
             Anim.to(box, 0.8, {Text1Y = -110}):ease("cubicinout")
@@ -286,9 +323,9 @@ local function rollOutBreakingContent()
             Anim.to(box, 0.8, {Text2Y = -110}):ease("cubicinout")
             box.Text2Showing = false
         end
-    elseif mode == "single" then
+    elseif layout == "single" then
         rollOutSingle()
-    elseif mode == "double" then
+    elseif layout == "double" then
         rollOutDouble()
     end
 end
@@ -401,6 +438,13 @@ function DrawLowerThirdFull()
             love.graphics.setFont(PresenterName)
             love.graphics.printf(LowerThirdFull.LowerThirdTitle.Text,LowerThirdFull.LowerThirdTitle.x,LowerThirdFull.LowerThirdTitle.y+LowerThirdFull.LowerThirdTitle.Text1Y,1920,"left")
             love.graphics.printf(LowerThirdFull.LowerThirdTitle.Text2,LowerThirdFull.LowerThirdTitle.x,LowerThirdFull.LowerThirdTitle.y+LowerThirdFull.LowerThirdTitle.Text2Y,1920,"left")
+
+            --The one line text is not clipped to the title window, it can come in while a two line text rolls out
+            if LowerThirdFull.SingleText.OldText ~= "" then
+                love.graphics.setScissor(0,870,1920,120)
+            else
+                love.graphics.setScissor(0,850,1920,140)
+            end
             love.graphics.setFont(LowerThirdFull.SingleText.Font2)
             love.graphics.print(LowerThirdFull.SingleText.Text2,LowerThirdFull.SingleText.x+286,LowerThirdFull.SingleText.y+39+LowerThirdFull.SingleText.Text2Y)
             if LowerThirdFull.SingleText.OldText ~= "" then
@@ -854,16 +898,51 @@ function HidePresenterNameSolo()
      end)
 end
 
+--The breaking strap turns into the text strap without going down: the red box and the BREAKING tag leave,
+--and the text only rolls if it is not the same text (or the same number of lines) as on the breaking strap
+local function breakingToText(Title, Subtitles, boxText, boxTcolor, boxBcolor)
+    local old = LowerThirdFull.BreakingMode
+    local box = LowerThirdFull.BreakingBox
+    local single = isSingle(Subtitles)
+    local layout = single and "single" or "double"
+    local sameText = LowerThirdFull.StrapKey == strapKey(Title, Subtitles)
+
+    LowerThirdFull.StrapKey = strapKey(Title, Subtitles)
+    LowerThirdFull.BreakingMode = nil
+    LowerThirdFull.LowerThirdTitleShowing = true
+    LowerThirdFull.SingleText.Showing = single
+
+    Anim.to(box, 0.8, {y = 988, h = 0}):ease("cubicinout")
+    HideLowerThirdBox()
+    if boxText ~= nil then Timer.after(0.6, function() ShowLowerThirdBox(boxText, boxTcolor, boxBcolor) end) end
+
+    if old == layout then
+        if not sameText then
+            if single then UpdateSingleText(Title) else UpdateLowerThirdText(Title, Subtitles) end
+        end
+    else
+        rollOutContent(old)
+        if single then rollInSingle(Title) else rollInDouble(Title, Subtitles) end
+    end
+
+    --The BREAKING / headline texts are out of sight by now, do not leave them behind
+    Timer.after(0.8, function()
+        if LowerThirdFull.BreakingMode ~= nil then return end
+        box.Text1, box.Text2, box.OldText = "", "", ""
+    end)
+end
+
 function ShowLowerThirdText(Title, Subtitles, boxText, boxTcolor, boxBcolor)
 
-    --If the breaking strap is showing, hide it
+    --If the breaking strap is showing, it becomes the text strap
     if LowerThirdFull.BreakingMode ~= nil then
-        HideBreakingLowerThird()
-        Timer.after(1.7, function() ShowLowerThirdText(Title, Subtitles, boxText, boxTcolor, boxBcolor) end)
+        breakingToText(Title, Subtitles, boxText, boxTcolor, boxBcolor)
         return
     end
 
-    if Subtitles[1] == nil or Subtitles[1] == "" or Subtitles[1] == "NOP" then LowerThirdFull.SingleText.Showing = true ShowLowerThirdTextSingle(Title, boxText, boxTcolor, boxBcolor) return end
+    LowerThirdFull.StrapKey = strapKey(Title, Subtitles)
+
+    if isSingle(Subtitles) then LowerThirdFull.SingleText.Showing = true ShowLowerThirdTextSingle(Title, boxText, boxTcolor, boxBcolor) return end
 
     if LowerThirdFull.LowerThirdShowing == false then
         ShowLowerThirdTextSolo(Title, Subtitles, boxText, boxTcolor, boxBcolor)
@@ -1191,6 +1270,27 @@ function UpdateSingleText(text)
     rollInSingle(text)
 end
 
+--Change the text of the text strap that is up. From one line to two lines (or back) the strap stays where it is.
+function UpdateTextStrap(text, subtitles)
+    local single = isSingle(subtitles)
+    local wasSingle = LowerThirdFull.SingleText.Showing == true
+
+    LowerThirdFull.StrapKey = strapKey(text, subtitles)
+    LowerThirdFull.SingleText.Showing = single
+
+    if single and wasSingle then
+        UpdateSingleText(text)
+    elseif not single and not wasSingle then
+        UpdateLowerThirdText(text, subtitles)
+    elseif single then
+        rollOutDouble()
+        rollInSingle(text)
+    else
+        rollOutSingle()
+        rollInDouble(text, subtitles)
+    end
+end
+
 function UpdateLowerThirdText(text, subtitles)
     if OnSub1Timer ~= nil then Timer.cancel(OnSub1Timer) end
     if OnSub2Timer ~= nil then Timer.cancel(OnSub2Timer) end
@@ -1481,9 +1581,16 @@ local function UpdateBreakingTitle(text)
         return
     end
 
-    --A text layout is on the strap: roll it out, take the BREAKING box down and bring the big BREAKING in
-    rollOutBreakingContent()
+    --A text layout is on the strap: roll it out, take the box (BREAKING or the text strap's) down and bring the big BREAKING in
+    rollOutContent(currentLayout())
     HideLowerThirdBox()
+
+    --The text strap turns into the breaking strap: the red box comes up over it
+    if LowerThirdFull.LowerThirdTitleShowing == true then
+        LowerThirdFull.LowerThirdTitleShowing = false
+        LowerThirdFull.SingleText.Showing = false
+        Anim.to(box, 1, {y = 940-120, h = 170}):ease("cubicout")
+    end
 
     LowerThirdFull.BreakingMode = "title"
     box.Text1, box.Text1Y, box.Text1Showing = "BREAKING", 110, true
@@ -1492,8 +1599,8 @@ local function UpdateBreakingTitle(text)
 end
 
 function ShowBreakingTitle(text)
-    --The strap is already up: change its headline in place instead of lowering and raising it
-    if LowerThirdFull.BreakingMode ~= nil then
+    --The strap is already up (breaking or text strap): change it in place instead of lowering and raising it
+    if LowerThirdFull.BreakingMode ~= nil or LowerThirdFull.LowerThirdTitleShowing == true then
         UpdateBreakingTitle(text)
         return
     end
@@ -1501,13 +1608,6 @@ function ShowBreakingTitle(text)
     --Hide program badge if showing
     if LowerThirdFull.ProgramBadgeShowing == true then
         HideProgramBadge()
-    end
-
-    --Hide lower third text if showing
-    if LowerThirdFull.LowerThirdTitleShowing == true then
-        HideLowerThirdText()
-        Timer.after(0.2, function() ShowBreakingTitle(text) end)
-        return
     end
 
     --Hide presenter name if showing
@@ -1582,22 +1682,14 @@ end
 
 function ShowBreakingLowerThird(text, subtitles)
     --No subtitle means a one line strap
-    local single = subtitles[1] == nil or subtitles[1] == "" or subtitles[1] == "NOP"
+    local single = isSingle(subtitles)
+    local layout = single and "single" or "double"
     local mode = LowerThirdFull.BreakingMode
 
     --The strap is already up with this layout: change its text in place instead of lowering and raising it
-    if mode == "single" and single then
-        UpdateSingleText(text)
-        return
-    elseif mode == "double" and not single then
-        UpdateLowerThirdText(text, subtitles)
-        return
-    end
-
-    --if the lower third is showing, hide it
-    if LowerThirdFull.LowerThirdTitleShowing == true then
-        HideLowerThirdText()
-        Timer.after(1.3, function() ShowBreakingLowerThird(text, subtitles) end)
+    if mode == layout then
+        LowerThirdFull.StrapKey = strapKey(text, subtitles)
+        if single then UpdateSingleText(text) else UpdateLowerThirdText(text, subtitles) end
         return
     end
 
@@ -1608,11 +1700,23 @@ function ShowBreakingLowerThird(text, subtitles)
         return
     end
 
-    --Whatever the strap is showing now (headline, one line or two line text) rolls out of the top
-    rollOutBreakingContent()
+    --The text strap is up: it turns into the breaking strap in place. Its text stays if it is the same text.
+    local fromText = LowerThirdFull.LowerThirdTitleShowing == true
+    local textInPlace = fromText and currentLayout() == layout
+    local sameText = LowerThirdFull.StrapKey == strapKey(text, subtitles)
+    LowerThirdFull.StrapKey = strapKey(text, subtitles)
 
-    --The BREAKING box only comes up (and flashes) if it is not up already, e.g. when going from one line to two lines
-    local boxUp = LowerThirdFull.LowerThirdBoxShowing == true
+    --Whatever the strap is showing now (headline, one line or two line text) rolls out of the top
+    if not textInPlace then rollOutContent(currentLayout()) end
+
+    --The BREAKING box only comes up (and flashes) if it is not up already, e.g. when going from one line to two lines.
+    --The box of a text strap makes way for it.
+    local boxUp = LowerThirdFull.LowerThirdBoxShowing == true and not fromText
+    local boxDelay = 0.3
+    if fromText and LowerThirdFull.LowerThirdBoxShowing == true then
+        HideLowerThirdBox()
+        boxDelay = 0.6
+    end
 
     --The text waits for the strap and box to come up, with both up already it only waits for the old text to get going
     local textDelay = boxUp and 0.25 or 0.5
@@ -1620,33 +1724,41 @@ function ShowBreakingLowerThird(text, subtitles)
     --If the breaking part was not showig, show it
     if LowerThirdFull.BreakingBox.h == 0 then
 
-        --Move clear part up and heighen it
         LowerThirdFull.BreakingBox.Text1 = ""
         LowerThirdFull.BreakingBox.Text2 = ""
-        Anim.to(LowerThirdFull.ClearPart, 1, {y = 940-120, h = 170}):ease("cubicout")
-        Anim.to(LowerThirdFull.BreakingBox, 1, {y = 940-120, h = 170}):ease("cubicout")
-        --And its scissor
-        Anim.to(LowerThirdFull.ClearPartScissor, 1, {y = 940-185, h = 235}):ease("cubicout")
 
-        --Move BBC box up
-        Anim.to(LowerThirdFull.BBCBox,1, {y = 940-120}):ease("cubicout")
+        if fromText then
+            --The strap is up already, only the red box comes up over it
+            Anim.to(LowerThirdFull.BreakingBox, 1, {y = 940-120, h = 170}):ease("cubicout")
+        else
+            --Move clear part up and heighen it
+            Anim.to(LowerThirdFull.ClearPart, 1, {y = 940-120, h = 170}):ease("cubicout")
+            Anim.to(LowerThirdFull.BreakingBox, 1, {y = 940-120, h = 170}):ease("cubicout")
+            --And its scissor
+            Anim.to(LowerThirdFull.ClearPartScissor, 1, {y = 940-185, h = 235}):ease("cubicout")
 
-        --Move BBC text up
-        Anim.to(LowerThirdFull.BBCText,1, {y = 934-120}):ease("cubicout")
+            --Move BBC box up
+            Anim.to(LowerThirdFull.BBCBox,1, {y = 940-120}):ease("cubicout")
 
-        if LowerThirdFull.ProgramBadgeShowing == true then
-            --Move the program badge up
-            Anim.to(LowerThirdFull.ProgramBadge, 1, {y = 940-120}):ease("cubicout")
+            --Move BBC text up
+            Anim.to(LowerThirdFull.BBCText,1, {y = 934-120}):ease("cubicout")
 
-            --Move program badge scissors up
-            Anim.to(LowerThirdFull.ProgramBadge, 1, {scissorY = 940-120}):ease("cubicout")
+            if LowerThirdFull.ProgramBadgeShowing == true then
+                --Move the program badge up
+                Anim.to(LowerThirdFull.ProgramBadge, 1, {y = 940-120}):ease("cubicout")
+
+                --Move program badge scissors up
+                Anim.to(LowerThirdFull.ProgramBadge, 1, {scissorY = 940-120}):ease("cubicout")
+            end
         end
     end
 
-    LowerThirdFull.BreakingMode = single and "single" or "double"
+    LowerThirdFull.BreakingMode = layout
+    LowerThirdFull.LowerThirdTitleShowing = false
+    LowerThirdFull.SingleText.Showing = false
 
     if not boxUp then
-        Timer.after(0.3,function() ShowLowerThirdBox("BREAKING", {184/255,0,0,1},{1,1,1,1}) end)
+        Timer.after(boxDelay,function() ShowLowerThirdBox("BREAKING", {184/255,0,0,1},{1,1,1,1}) end)
     end
     Timer.after(textDelay, function()
 
@@ -1661,27 +1773,16 @@ function ShowBreakingLowerThird(text, subtitles)
             Timer.after(1.2, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,1}):ease("cubicinout") end)
         end
 
-        if single then
+        if textInPlace then
+            --Same number of lines as the text strap had: only a different text has to change
+            if not sameText then
+                if single then UpdateSingleText(text) else UpdateLowerThirdText(text, subtitles) end
+            end
+        elseif single then
             rollInSingle(text)
-            return
+        else
+            rollInDouble(text, subtitles)
         end
-
-        LowerThirdFull.LowerThirdTitle.Text = text
-
-        LowerThirdFull.LowerThirdSubtitle1.Text = subtitles[1]
-        LowerThirdFull.LowerThirdSubtitle2.Text = subtitles[2]
-
-        if subtitles[2] ~= nil and subtitles[2] ~= "NOP" then LoopBetweenSubtitles() end
-
-
-        --Move the text up
-        Anim.to(LowerThirdFull.LowerThirdTitle, 1, {y = 980-120}):ease("cubicinout")
-
-        --Move the subtitle 1 up
-        Anim.to(LowerThirdFull.LowerThirdSubtitle1, 1, {y = 980-50}):ease("cubicinout")
-
-        --Move the subtitle 2 up
-        Anim.to(LowerThirdFull.LowerThirdSubtitle2, 1, {y = 980}):ease("cubicinout")
     end)
 
 end

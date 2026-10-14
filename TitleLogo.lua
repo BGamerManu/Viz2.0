@@ -34,9 +34,9 @@ function DrawTitleLogo()
     love.graphics.draw(Chameleon.bimg, 913, Chameleon.by, 0, 0.13)
     love.graphics.draw(Chameleon.cimg, 1032, Chameleon.ny, 0, 0.13)
 
-    --The text under the blocks is the channel name from the branding ("NEWS", "WORLD NEWS"...),
+    --The text under the blocks is always "NEWS", or "WORLD NEWS" for a world channel branding,
     --centred where "NEWS" has always been
-    local channel = Headline.BBCText.Text
+    local channel = string.find(string.lower(Headline.BBCText.Text), "world") and "WORLD NEWS" or "NEWS"
     love.graphics.setColor(Chameleon.newscol)
     love.graphics.setFont(Chameleon.newsfont)
     love.graphics.print(channel, 832 + (Chameleon.newsfont:getWidth("NEWS") - Chameleon.newsfont:getWidth(channel)) / 2, Chameleon.newsy)

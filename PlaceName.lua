@@ -27,7 +27,7 @@ PlaceName = {
 
     Name = "LIVE   Newsroom",
 
-    --"left" or "right" screen edge; the right hand bug is the mirror image of the left one
+    --"left" or "right" screen edge, or "both" for a bug on each; the right hand bug is the mirror image of the left one
     Side = "left",
 
     TimeOffset = 0,
@@ -44,9 +44,7 @@ PlaceName = {
 
 PlaceNameShowing = false
 
-function DrawPlaceName()
-    local right = PlaceName.Side == "right"
-
+local function drawPlaceNameSide(right)
     love.graphics.setScissor(right and 0 or 280,50,1920,PlaceName.Box.h + PlaceName.BottomBar.h)
         --if first 4 letters of name are "LIVE" then set LIVE to true
         if string.sub(PlaceName.Name,1,4) == "LIVE" then PlaceName.LIVE = true else PlaceName.LIVE = false end
@@ -110,6 +108,19 @@ function DrawPlaceName()
     love.graphics.setScissor()
 end
 
+function DrawPlaceName()
+    if PlaceName.Side == "both" then
+        drawPlaceNameSide(false)
+        drawPlaceNameSide(true)
+    else
+        drawPlaceNameSide(PlaceName.Side == "right")
+    end
+end
+
+local function sideOf(side)
+    return (side == "right" or side == "both") and side or "left"
+end
+
 function ShowPlaceName(text, side)
     if PlaceNameShowing then 
         HidePlaceName()
@@ -118,7 +129,7 @@ function ShowPlaceName(text, side)
     end
 
     PlaceNameShowing = true
-    PlaceName.Side = side == "right" and "right" or "left"
+    PlaceName.Side = sideOf(side)
     PlaceName.Name = text
     PlaceName.Box.y = 50+50
     PlaceName.BottomBar.y = 90+50
@@ -143,7 +154,7 @@ function ShowPlaceNameWithTime(text, TimeOffset, side)
     PlaceName.TimeOffset = TimeOffset*3600
 
     PlaceNameShowing = true
-    PlaceName.Side = side == "right" and "right" or "left"
+    PlaceName.Side = sideOf(side)
     PlaceName.Name = text
     PlaceName.Box.y = 50+50
     PlaceName.BottomBar.y = 90+50

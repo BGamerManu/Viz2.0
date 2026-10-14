@@ -145,7 +145,7 @@ function love.draw()
         love.graphics.draw(Splash)
         love.graphics.setColor(1,1,1,waterMarkFade.a)
         love.graphics.setFont(waterMarkFont)
-        love.graphics.print("Made by playsamay4\n\nhttps://github.com/playsamay4/Viz2.0\n\nWaiting for connection from VizHelper...", 100, 700)
+        love.graphics.print("Made by Manuel_Ottani\n\nForked from PlaySamay4 Viz2.0\n\nI'm trying to keep this app\nupdated as far as i can", 100, 700)
         love.graphics.print("Viz2.0", 1750,1000)
 
         love.graphics.setColor(1,1,1,waterMarkFade.a-0.7)

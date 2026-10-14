@@ -3,9 +3,8 @@ HeadlineShowing = false
 
 HeadlineFadeColor = {1,1,1,0.4}
 
---The red BBC NEWS box in front of the headline is retired, the Chameleon title replaces it.
---Set this to true to bring the box back.
-HeadlineBBCBox = false
+--The red BBC NEWS box in front of the headline. Set this to false to leave it out (only the COMING UP box is drawn then).
+HeadlineBBCBox = true
 
 --Widest a headline gets before its font shrinks to fit (leaves a right margin of about 250px)
 local HeadlineMaxWidth = 1400
@@ -78,6 +77,13 @@ Headline = {
     --Font the text fits in (nil: the full size ReithSerif) and how far it moves down to keep the same baseline
     Font = nil,
     FontYAdj = 0,
+
+    --A headline too wide even at the smallest size is squashed sideways to fit (1 = not squashed)
+    ScaleX = 1,
+
+    --How far the BBC NEWS box, COMING UP box and the top / bottom of the vertical bar move in to follow a smaller text
+    TopAdj = 0,
+    BottomAdj = 0,
 
 }
 
@@ -162,20 +168,27 @@ function DrawHeadlineSingle()
         --Fader
         love.graphics.setColor(HeadlineFadeColor)
         love.graphics.draw(Fader,0,0,0,1.5,1.5)
+        --A second, lighter pass makes the background behind the headline a little darker
+        love.graphics.setColor(1,1,1,HeadlineFadeColor[4]*0.3)
+        love.graphics.draw(Fader,0,0,0,1.5,1.5)
 
-    love.graphics.setScissor(0,845,love.graphics.getWidth(),ReithSerif:getHeight(Headline.TextLo)-30)
+    love.graphics.setScissor(0,845,1920,ReithSerif:getHeight(Headline.TextLo)-30)
          --Headline Text (1 line, lower)
          love.graphics.setColor(1,1,1,1)
          love.graphics.setFont(Headline.Font or ReithSerif)
-         love.graphics.print(Headline.TextLo,Headline.TextXLo,Headline.TextYLo + Headline.FontYAdj)
+         love.graphics.print(Headline.TextLo,Headline.TextXLo,Headline.TextYLo + Headline.FontYAdj,0,Headline.ScaleX,1)
      love.graphics.setScissor()
 
-    love.graphics.setScissor(270,780,900,44)
+    local top, bottom = Headline.TopAdj, Headline.BottomAdj
+    --The BBC NEWS / COMING UP boxes and the top of the vertical bar sit 10px higher
+    local boxTop = top - 10
+
+    love.graphics.setScissor(270,780+boxTop,900,44)
 
         if Headline.comingUpOnly ~= true then
         --BBC Box
          love.graphics.setColor(Headline.BBCBox.col)
-         love.graphics.rectangle("fill",Headline.BBCBox.x,Headline.BBCBox.y,Headline.BBCBox.w,Headline.BBCBox.h)
+         love.graphics.rectangle("fill",Headline.BBCBox.x,Headline.BBCBox.y+boxTop,Headline.BBCBox.w,Headline.BBCBox.h)
 
         --BBC Box Text
          love.graphics.setColor(1,1,1,1)
@@ -184,14 +197,14 @@ function DrawHeadlineSingle()
          else
             love.graphics.setFont(ReithSansBold)
          end
-         love.graphics.print(Headline.BBCText.Text,Headline.BBCText.x,Headline.BBCText.y)
+         love.graphics.print(Headline.BBCText.Text,Headline.BBCText.x,Headline.BBCText.y+boxTop)
 
          --BBC Logo
          love.graphics.setColor(1,1,1,1)
          if gillMode == true then
-            love.graphics.draw(BBCSmallGill,Headline.BBCLogo.x,Headline.BBCLogo.y,0,0.04,0.04)
+            love.graphics.draw(BBCSmallGill,Headline.BBCLogo.x,Headline.BBCLogo.y+boxTop,0,0.04,0.04)
          else
-            love.graphics.draw(BBCSmall,Headline.BBCLogo.x,Headline.BBCLogo.y,0,0.04,0.04)
+            love.graphics.draw(BBCSmall,Headline.BBCLogo.x,Headline.BBCLogo.y+boxTop,0,0.04,0.04)
          end
 
         end
@@ -199,23 +212,23 @@ function DrawHeadlineSingle()
         --Coming Up Box
         if Headline.comingUp then
             love.graphics.setColor(Headline.comingUpBox.col)
-            love.graphics.rectangle("fill",Headline.comingUpBox.x,Headline.comingUpBox.y,Headline.comingUpBox.w,Headline.comingUpBox.h)
+            love.graphics.rectangle("fill",Headline.comingUpBox.x,Headline.comingUpBox.y+boxTop,Headline.comingUpBox.w,Headline.comingUpBox.h)
             love.graphics.setColor(Headline.comingUpText.col)
             love.graphics.setFont(ReithSansBold)
-            love.graphics.print(Headline.comingUpText.text,Headline.comingUpText.x,Headline.comingUpText.y)
+            love.graphics.print(Headline.comingUpText.text,Headline.comingUpText.x,Headline.comingUpText.y+boxTop)
         end
      love.graphics.setScissor()
 
 
 
-     love.graphics.setScissor(240,780,5,205)
+     love.graphics.setScissor(240,780+boxTop,5,205-boxTop-bottom)
          --Left Bar White
          love.graphics.setColor(1,1,1,1)
-         love.graphics.rectangle("fill",Headline.LeftBarWhite.x,Headline.LeftBarWhite.y,Headline.LeftBarWhite.w,Headline.LeftBarWhite.h)
+         love.graphics.rectangle("fill",Headline.LeftBarWhite.x,Headline.LeftBarWhite.y+boxTop,Headline.LeftBarWhite.w,Headline.LeftBarWhite.h-boxTop-bottom)
 
          --Left Bar Purple
          love.graphics.setColor(Headline.LeftBarPurple.col)
-         love.graphics.rectangle("fill",Headline.LeftBarPurple.x,Headline.LeftBarPurple.y,Headline.LeftBarPurple.w,Headline.LeftBarPurple.h)
+         love.graphics.rectangle("fill",Headline.LeftBarPurple.x,Headline.LeftBarPurple.y+boxTop,Headline.LeftBarPurple.w,Headline.LeftBarPurple.h-boxTop-bottom)
      love.graphics.setScissor()
 
 
@@ -235,8 +248,9 @@ function PlayoutNextHeadline(text, style)
     HeadlineShow(text, style)
 end
 
---Shrink the headline font until the text fits in HeadlineMaxWidth.
---Returns the font and how far down it has to be drawn to keep the baseline of the full size font.
+--Shrink the headline font until the text fits in HeadlineMaxWidth, and squash what still does not fit at the smallest size.
+--Returns the font, how far down it has to be drawn to keep the baseline of the full size font, the sideways scale,
+--and how far the top and the bottom of the strap (BBC NEWS box, vertical bar) move in to follow the smaller text.
 local function fitHeadline(text)
     local font = ReithSerif
     local width = font:getWidth(text)
@@ -251,7 +265,11 @@ local function fitHeadline(text)
         end
     end
 
-    return font, ReithSerif:getBaseline() - font:getBaseline()
+    local scale = math.min(1, HeadlineMaxWidth / font:getWidth(text))
+    local top = ReithSerif:getBaseline() - font:getBaseline()
+    local bottom = math.max(0, (ReithSerif:getHeight() - ReithSerif:getBaseline()) - (font:getHeight() - font:getBaseline()))
+
+    return font, top, scale, top, bottom
 end
 
 function HeadlineShow(text, style)
@@ -279,7 +297,7 @@ function HeadlineShow(text, style)
         if line == "" then return end
 
         Headline.TextLo = line
-        Headline.Font, Headline.FontYAdj = fitHeadline(line)
+        Headline.Font, Headline.FontYAdj, Headline.ScaleX, Headline.TopAdj, Headline.BottomAdj = fitHeadline(line)
         if style ~= nil then
             ConfigureHeadlineStyle(style)
         else
