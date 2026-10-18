@@ -26,6 +26,8 @@ PlaceName = {
     },
 
     Name = "LIVE   Newsroom",
+    --Text of the right hand bug when Side is "both" (nil: same as Name)
+    Name2 = nil,
 
     --"left" or "right" screen edge, or "both" for a bug on each; the right hand bug is the mirror image of the left one
     Side = "left",
@@ -45,21 +47,26 @@ PlaceName = {
 PlaceNameShowing = false
 
 local function drawPlaceNameSide(right)
-    love.graphics.setScissor(right and 0 or 280,50,1920,PlaceName.Box.h + PlaceName.BottomBar.h)
-        --if first 4 letters of name are "LIVE" then set LIVE to true
-        if string.sub(PlaceName.Name,1,4) == "LIVE" then PlaceName.LIVE = true else PlaceName.LIVE = false end
+    --The right hand bug has its own text when one was given (Name2), else it repeats Name
+    local full = (right and PlaceName.Name2) or PlaceName.Name
+    local live = string.sub(full,1,4) == "LIVE"
+    local place = live and (string.gsub(string.sub(full, 5), "^%s+", "")) or full
+    PlaceName.LIVE = live
+    if not live and place == "" then return end
 
+    love.graphics.setScissor(right and 0 or 280,50,1920,PlaceName.Box.h + PlaceName.BottomBar.h)
         PlaceName.timeBox.text = os.date("%H:%M", os.time() + PlaceName.TimeOffset)
 
         --Left: the whole name (including "LIVE") is printed in one box and the red box covers its first word.
-        --Right: the red box moves to the outer (right) edge, so "LIVE" and the place are printed separately.
-        local name, liveW = PlaceName.Name, 0
-        if right and PlaceName.LIVE then
-            name = string.gsub(string.sub(PlaceName.Name, 5), "^%s+", "")
+        --Right (or LIVE without a place): the red box sits at the outer edge, so "LIVE" and the place are printed separately.
+        local name, liveW = full, 0
+        if live and (right or place == "") then
+            name = place
             liveW = PlaceName.liveBox.w
         end
 
-        PlaceName.Box.w, PlaceName.BottomBar.w = ReithSansRegular:getWidth(name) + 20 + liveW, ReithSansRegular:getWidth(name) + 20 + liveW
+        local textW = name == "" and 0 or ReithSansRegular:getWidth(name) + 20
+        PlaceName.Box.w, PlaceName.BottomBar.w = textW + liveW, textW + liveW
         PlaceName.timeBox.w = ReithSansRegular:getWidth(PlaceName.timeBox.text) + 20
 
         local boxX, liveX = PlaceName.Box.x, PlaceName.liveBox.x
@@ -76,7 +83,7 @@ local function drawPlaceNameSide(right)
         love.graphics.rectangle("fill",boxX,PlaceName.Box.y,PlaceName.Box.w,PlaceName.Box.h)
 
         --Place Name liveBox
-        if PlaceName.LIVE then
+        if live then
             love.graphics.setColor(ThemeColor)
             love.graphics.rectangle("fill",liveX,PlaceName.liveBox.y,PlaceName.liveBox.w,PlaceName.liveBox.h)
         end
@@ -89,7 +96,7 @@ local function drawPlaceNameSide(right)
         love.graphics.setFont(ReithSansRegular)
         love.graphics.setColor(1,1,1,1)
         love.graphics.print(name,boxX + 10,PlaceName.Box.y)
-        if right and PlaceName.LIVE then love.graphics.print("LIVE",liveX + 10,PlaceName.Box.y) end
+        if liveW > 0 then love.graphics.print("LIVE",liveX + 10,PlaceName.Box.y) end
 
         --Time box
         love.graphics.setColor(PlaceName.Box.c)
@@ -121,16 +128,17 @@ local function sideOf(side)
     return (side == "right" or side == "both") and side or "left"
 end
 
-function ShowPlaceName(text, side)
+function ShowPlaceName(text, side, text2)
     if PlaceNameShowing then 
         HidePlaceName()
-        Timer.after(0.5, function() ShowPlaceName(text, side) end)
+        Timer.after(0.5, function() ShowPlaceName(text, side, text2) end)
     return
     end
 
     PlaceNameShowing = true
     PlaceName.Side = sideOf(side)
     PlaceName.Name = text
+    PlaceName.Name2 = text2
     PlaceName.Box.y = 50+50
     PlaceName.BottomBar.y = 90+50
     PlaceName.liveBox.y = 50+50
@@ -142,12 +150,12 @@ function ShowPlaceName(text, side)
     
 end
 
-function ShowPlaceNameWithTime(text, TimeOffset, side)
+function ShowPlaceNameWithTime(text, TimeOffset, side, text2)
 
 
     if PlaceNameShowing then 
         HidePlaceName()
-        Timer.after(0.5, function() ShowPlaceNameWithTime(text, TimeOffset, side) end)
+        Timer.after(0.5, function() ShowPlaceNameWithTime(text, TimeOffset, side, text2) end)
     return
     end
 
@@ -156,6 +164,7 @@ function ShowPlaceNameWithTime(text, TimeOffset, side)
     PlaceNameShowing = true
     PlaceName.Side = sideOf(side)
     PlaceName.Name = text
+    PlaceName.Name2 = text2
     PlaceName.Box.y = 50+50
     PlaceName.BottomBar.y = 90+50
     PlaceName.timeBox.y = 90+50

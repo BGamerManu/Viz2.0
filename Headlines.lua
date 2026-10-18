@@ -155,6 +155,7 @@ end
 
 
 function DrawHeadlineSingle()
+    Headline.comingUpBox.w = ReithSansBold:getWidth(Headline.comingUpText.text) + 16
     if Headline.comingUpOnly ~= true then
         Headline.BBCBox.w = 118 + ReithSansBold:getWidth(Headline.BBCText.Text) + 10
         Headline.comingUpBox.x = Headline.BBCBox.x + Headline.BBCBox.w
@@ -201,7 +202,9 @@ function DrawHeadlineSingle()
 
          --BBC Logo
          love.graphics.setColor(1,1,1,1)
-         if gillMode == true then
+         if CustomLogo ~= nil then
+            DrawCustomLogo(Headline.BBCLogo.x,Headline.BBCLogo.y+boxTop,102.4,29.3,Headline.BBCBox.col)
+         elseif gillMode == true then
             love.graphics.draw(BBCSmallGill,Headline.BBCLogo.x,Headline.BBCLogo.y+boxTop,0,0.04,0.04)
          else
             love.graphics.draw(BBCSmall,Headline.BBCLogo.x,Headline.BBCLogo.y+boxTop,0,0.04,0.04)
@@ -310,6 +313,8 @@ end
 function ConfigureHeadlineStyle(text)
     Headline.comingUpOnly = not HeadlineBBCBox
 
+    Headline.comingUpText.text = "COMING UP"
+
     if text == "clear" or text == "" or text == nil then
         Headline.comingUp = false
         return
@@ -320,7 +325,8 @@ function ConfigureHeadlineStyle(text)
 
     for i,v in pairs(configurationWords) do
         if v == "ComingUp" then Headline.comingUp = true end
-        if v == "ComingUpOnly" then Headline.comingUpOnly = true end
+        if v == "InBrief" then Headline.comingUp = true Headline.comingUpText.text = "IN BRIEF" end
+        if v == "ComingUpOnly" or v == "NoBBC" then Headline.comingUpOnly = true end
     end
 end
 

@@ -12,7 +12,7 @@ This is a fork of [playsamay4/Viz2.0](https://github.com/playsamay4/Viz2.0), mad
 2. On Linux/macOS install [LÖVE 11.4](https://love2d.org/) and run `love Viz2.0` on the source folder (or on the `.love` file).
 3. Start VizHelper afterwards. When it connects, the splash screen fades out. If VizHelper runs on another computer, set Viz2.0's IP in VizHelper's settings.
 
-Useful keys in the Viz2.0 window: `F11` scaled / full window, `N` hide the splash screen, `G` Gill Sans mode, `Numpad *` backdrop. All of them also have a button in VizHelper's *Testing area*.
+Viz2.0 has no keyboard shortcuts: window mode and the backdrops are buttons in VizHelper's *Testing area*.
 
 ## What is different in this fork
 
@@ -54,7 +54,7 @@ Going from the text strap to the breaking strap (and back), or from a one line t
 - **BREAKING headline is optional.** `Show-BreakingTitle` with an empty `Text` shows just BREAKING; `Advance-BreakingTitle` scrolls to the headline.
 - **No white ticker needed for straps.** The text and breaking straps come up on their own when the ticker is down, and sink out of sight when hidden.
 - **Badges.** The programme badge goes back down with the strap and always comes in on the row its clip window is on; it is no longer re-shown with the text and colours of the last info badge.
-- **Keyboard-only features have requests**, used by VizHelper's Testing area (see below).
+- **Testing features have requests**, used by VizHelper's Testing area (see below).
 - The two line text no longer leaves its old title parked above the strap after rolling out.
 - The splash screen text was rewritten.
 
@@ -64,7 +64,7 @@ Everything is a `headline` event with a table, `Type` being one of:
 
 | Group | Types |
 |---|---|
-| Headline | `Show-Headline` (`Text`, `Style` = `"ComingUp"`), `Next-Headline`, `Hide-Headline`, `Show-Headline-KeepText` |
+| Headline | `Show-Headline` (`Text`, `Style` = words `ComingUp` / `InBrief` (badge) and `NoBBC` (no BBC News box)), `Next-Headline`, `Hide-Headline`, `Show-Headline-KeepText` |
 | Titles | `Show-TitleLogo` (`Style`), `Hide-TitleLogo`, `Show-TitleLogoInstant`, `Hide-TitleLogoInstant` |
 | News Bar | `ShowLowerThird`, `HideLowerThird`, `ToggleL3`, `Show-TickerOnly`, `Hide-TickerOnly`, `Show-Clock`, `Hide-Clock` |
 | Text strap | `Show-LowerThirdText` (`Text` = `top\nsub1\nsub2`, `BoxText`), `Hide-LowerThirdText` |
@@ -72,9 +72,9 @@ Everything is a `headline` event with a table, `Type` being one of:
 | Name strap | `Show-PresenterName` (`Text` = `name\nrole`), `Hide-PresenterName` |
 | Badges | `Show-ProgramBadge`, `Set-ProgramBadge`, `Hide-ProgramBadge`, `Remove-ProgramBadge` (`Text`, `TextColor`, `BackgroundColor` as `"r/g/b"`), `Show-SocialsBadge`, `Hide-SocialsBadge`, `Show-CreditBadge`, `Hide-CreditBadge` |
 | LIVE bug | `Show-PlaceName` (`Text`, `Side`), `Show-PlaceNameWithTime` (`Text`, `Offset`, `Side`), `Hide-PlaceName` |
-| Branding | `Set-Branding` (`channelName`, `opaque`, `coloredStrap`, `ThemeColor` = `{r,g,b}`, `clockMode` = `default` / `off` / `breakfast`) |
+| Branding | `Set-Branding` (`channelName`, `opaque`, `coloredStrap`, `ThemeColor` = `{r,g,b}`, `clockMode` = `default` / `off` / `breakfast`; optional `Style` = `"election24"` for the second look (see `Election24.lua`), optional `BreakingColor` = `{r,g,b}` accent of the BREAKING graphics, optional `LogoPNG` = PNG data of a custom logo with `LogoMode` = `original` / `colour` / `auto` and `LogoColor` = `{r,g,b}`). With a custom logo `Show-TitleLogo` does nothing |
 | Ticker | `GetTickerText`, `GetTickerTextTable`, `KillTicker`, `ResumeTicker` |
-| Misc. | `Wipe`, `Flash`, `Show-BreakfastIntroClock`, `Hide-BreakfastIntroClock`, `Toggle-Backdrop`, `Toggle-GillMode`, `Hide-Splash`, `Toggle-WindowMode`, `Load-AVPlayout`, `Play-AV` |
+| Misc. | `Wipe`, `Flash`, `Toggle-Backdrop`, `Toggle-WindowMode`, `Load-AVPlayout`, `Play-AV` |
 
 ## License
 

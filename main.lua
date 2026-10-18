@@ -17,8 +17,6 @@ EnableBadge = false
 shouldUsePush = false
 
 gillMode = false
-showGillModeNotice = false
-showGillModeNoticeTimer = nil
 
 newsTitle = love.graphics.newImage("images/bbcbox.png")
 worldTitle = love.graphics.newImage("images/worldbox.png")
@@ -30,6 +28,7 @@ server = sock.newServer("*", 10655)
 
 ThemeColor = {185/255, 0,0}
 
+require "Logo"
 require "Headlines"
 require "PlaceName"
 require "TitleLogo"
@@ -37,8 +36,8 @@ require "Transition"
 require "Ticker"
 require "requests"
 require "LowerThirdFull"
-require "BreakfastIntroClock"
 require "LowerThirdClock"
+require "Election24"
 require "Flash"
 require "AVplayout"
 
@@ -55,7 +54,7 @@ function love.load()
     love.window.setIcon(icon)
     
 
-    bg = love.graphics.newImage("images/backdrop.png")
+    bg = love.graphics.newImage("images/studio.jpg")
 
     Fader = love.graphics.newImage("images/HeadlineFade.png")
 
@@ -102,7 +101,6 @@ function love.update(dt)
     Timer.update(dt)
     server:update()
 
-    UpdateBreakfastIntroClock()
     UpdateLowerThirdClock()
     UpdateAVplayout(dt)
 end
@@ -113,10 +111,9 @@ function love.draw()
     if shouldUsePush == true then push:start() end
     love.graphics.setBackgroundColor(0,0,0,0)
     
-    if ShowBG then 
-        love.graphics.setColor(1,1,1,0.6)
-        love.graphics.draw(bg,0,0,0,2,2)
-        -- love.graphics.draw(bg,0,0)
+    if ShowBG then
+        love.graphics.setColor(1,1,1,1)
+        love.graphics.draw(bg,0,0)
     end
 
     DrawAVplayout()
@@ -128,17 +125,17 @@ function love.draw()
 
     DrawFlash()
 
-    DrawLowerThirdFull()
+    if not E24.Active then DrawLowerThirdFull() end
 
-    DrawPlaceName()
+    if not E24.Active then DrawPlaceName() end
 
     DrawTitleLogo()
 
-    DrawBreakfastIntroClock()
+    if not E24.Active then DrawLowerThirdClock() end
 
-    DrawLowerThirdClock()
+    if not E24.Active then DrawHeadlineSingle() end
 
-    DrawHeadlineSingle()
+    if E24.Active then DrawElection24() end
 
     if waterMark == true then
         love.graphics.setColor(1,1,1,waterMarkFade.a)
@@ -150,64 +147,14 @@ function love.draw()
 
         love.graphics.setColor(1,1,1,waterMarkFade.a-0.7)
         love.graphics.setFont(waterMarkFontSmall)
-        love.graphics.print("Press F11 to toggle fullscreen mode                                                                                                                                                                                                                                                                                                            1.2.0", 10, 10 )
+        love.graphics.print("1.4.0", 1850, 10 )
     end
     
-    if showGillModeNotice == true then
-        if gillMode == true then
-            love.graphics.setColor(185/255,0,0,0.3)
-            love.graphics.rectangle("fill", 95,103, 180, 23)
-
-            love.graphics.setColor(1,1,1,1)
-            love.graphics.setFont(waterMarkFontSmall)
-            love.graphics.print("Gill Mode Enabled", 100, 100)
-        else
-            love.graphics.setColor(185/255,0,0,0.3)
-            love.graphics.rectangle("fill", 95,103, 185, 23)
-
-            love.graphics.setColor(1,1,1,1)
-            love.graphics.setFont(waterMarkFontSmall)
-            love.graphics.print("Gill Mode Disabled", 100, 100)
-        end
-    end
-
     if shouldUsePush == true then push:finish() end
 end
---Keyboard shortcuts that VizHelper's Testing area can trigger too
+--Called from VizHelper's Testing area
 function ToggleBackdrop()
     ShowBG = not ShowBG
-end
-
-function HideSplash()
-    Timer.tween(0.8, waterMarkFade, {a = 0}, "in-out-cubic", function()
-        waterMark = false
-    end)
-end
-
-function ToggleGillMode()
-    if showGillModeNoticeTimer ~= nil then Timer.cancel(showGillModeNoticeTimer) end
-
-    gillMode = not gillMode
-    showGillModeNotice = true
-
-
-    showGillModeNoticeTimer = Timer.after(2, function()
-        showGillModeNotice = false
-    end)
-
-    if gillMode == true then
-        if TitleLogo.image == newsTitle then
-            TitleLogo.image = newsTitleGill
-        elseif TitleLogo.image == worldTitle then
-            TitleLogo.image = worldTitleGill
-        end
-    else
-        if TitleLogo.image == newsTitleGill then
-            TitleLogo.image = newsTitle
-        elseif TitleLogo.image == worldTitleGill then
-            TitleLogo.image = worldTitle
-        end
-    end
 end
 
 function ToggleWindowMode()
@@ -222,127 +169,6 @@ function ToggleWindowMode()
     end
 end
 
-function love.keypressed(key)
-    if key == "escape" then love.event.quit() end
-
-    if key == "lalt" then
-        HidePlaceName()
-    end
-
-    if key == "lshift" then
-        ShowTitleLogo()
-    end
-    if key == "rshift" then
-        HideTitleLogo()
-    end
-
-    if key == "space" then
-        ShowTransition()
-    end
-
-    if key == "]" then
-        HideLowerThirdFull()
-    end
-
-    if key == "[" then
-        ShowLowerThirdFull()
-    end
-
-
-    if key == "\\" then
-        HideBreakfastIntroClock()
-    end
-
-    if key == ";" then
-        ShowBreakfastIntroClock()
-    end
-
-    if key == "8" then
-        --HideProgramBadge()
-        HideInfoBadge()
-    end
-
-    if key == "kp*" then
-        ToggleBackdrop()
-    end
-
-    if key == "kp1" then
-        ShowTickerOnly()
-    end
-
-    if key == "kp2" then
-        HideTickerOnly()
-    end
-
-    if key == "9" then 
-        ShowLowerThirdClock()
-    end
-
-    if key == "0" then 
-        HideLowerThirdClock()
-    end
-
-    if key == "k" then 
-        ShowLowerThirdText("Lorem ipsum dolor sit amet", {"blah blah blah fhdoiha98h489vm948yn58 ", "manchester united are rubbish"})
-    end
-
-    if key == "l" then 
-        HideLowerThirdText()
-    end
-
-    if key == "h" then
-        LowerThirdFull.PresenterName.Text = "playsamay4"
-        ShowPresenterName()
-    end
-
-    if key == "j" then
-        HidePresenterName()
-    end
-
-    if key == "d" then
-        ShowLowerThirdTextSolo("Lorem ipsum dolor sit amet", {"blah blah blah fhdoiha98h489vm948yn58 ", "manchester united are rubbish"})
-    end
-    
-    if key == "f" then
-        HideLowerThirdTextSolo()
-    end
-
-    if key == "q" then
-        ShowShitHeadlines("Tortured and skinned alive!", "LookNorth")
-    end
-
-    
-    if key == "a" then
-        HideShitHeadlines()
-    end
-
-    if key == "g" then
-        ToggleGillMode()
-    end
-
-    if key == "s" then
-       RemoveShitHeadline()
-    end
-
-
-    if key == "=" then
-        ShowTitleLogo("chameleon")
-    end
-
-    if key == "-" then
-        HideTitleLogo()
-    end
-
-    if key == "n" then
-        HideSplash()
-    end
-
-    if key == "f11" then
-        ToggleWindowMode()
-    end
-
-end
-
 function love.resize(w,h)
     push:resize(w, h)
 end
@@ -350,7 +176,6 @@ end
 HideHeadlineInstant()
 HidePlaceNameInstant()
 HideLowerThirdFullInstant()
-HideBreakfastIntroClockInstant()
 HideLowerThirdClockInstant()
 HideBadgesInstant()
 HideChameleonInstant()

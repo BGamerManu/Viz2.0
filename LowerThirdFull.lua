@@ -340,21 +340,26 @@ function DrawLowerThirdFull()
         --Presenter name
         
         love.graphics.setScissor(LowerThirdFull.PresenterNameScissor.x,LowerThirdFull.PresenterNameScissor.y,LowerThirdFull.PresenterNameScissor.w,LowerThirdFull.PresenterNameScissor.h)
-            love.graphics.setColor(LowerThirdFull.PresenterName.col)
-            love.graphics.setFont(PresenterName)
-            --Put text into array by lines
-            local PresenterNameText = {}
-            for line in LowerThirdFull.PresenterName.Text:gmatch("[^\n]+") do
-                table.insert(PresenterNameText, line)
-            end
-            love.graphics.printf(PresenterNameText[1],LowerThirdFull.PresenterName.x,LowerThirdFull.PresenterName.y,LowerThirdFull.PresenterName.w,"left")
+            local P, sub = LowerThirdFull.PresenterName, LowerThirdFull.PresenterSubtitle
+            local function drawName(text, y, subY)
+                --Put text into array by lines
+                local lines = {}
+                for line in text:gmatch("[^\n]+") do
+                    table.insert(lines, line)
+                end
+                love.graphics.setColor(P.col)
+                love.graphics.setFont(PresenterName)
+                love.graphics.printf(lines[1],P.x,y,P.w,"left")
 
-            --Presenter subtitle
-            love.graphics.setColor(LowerThirdFull.PresenterSubtitle.col)
-            love.graphics.setFont(LowerThirdFull.PresenterSubtitle.Font)
-            if PresenterNameText[2] ~= nil then love.graphics.printf(PresenterNameText[2],LowerThirdFull.PresenterSubtitle.x,LowerThirdFull.PresenterSubtitle.y,LowerThirdFull.PresenterSubtitle.w,"left") end
-            
-        
+                --Presenter subtitle
+                love.graphics.setColor(sub.col)
+                love.graphics.setFont(sub.Font)
+                if lines[2] ~= nil then love.graphics.printf(lines[2],sub.x,subY,sub.w,"left") end
+            end
+            drawName(P.Text, P.y, sub.y)
+            --The name that is rolling out
+            if P.OldText then drawName(P.OldText, P.OldY, P.OldSubY) end
+
         --Set scissor for subtitles
         --TO DO
         --Subtitle 1
@@ -407,7 +412,9 @@ function DrawLowerThirdFull()
         love.graphics.setScissor(LowerThirdFull.ClearPartScissor.x,LowerThirdFull.ClearPartScissor.y,LowerThirdFull.ClearPartScissor.w,LowerThirdFull.ClearPartScissor.h)
         
         love.graphics.setColor(1,1,1,1)
-        if gillMode == true then
+        if CustomLogo ~= nil then
+            DrawCustomLogo(LowerThirdFull.BBCBox.x+13,LowerThirdFull.BBCBox.y+7,115.2,33,LowerThirdFull.BBCBox.col)
+        elseif gillMode == true then
             love.graphics.draw(BBCSmallGill,LowerThirdFull.BBCBox.x+13,LowerThirdFull.BBCBox.y+7, 0 , 0.045, 0.045)
         else
             love.graphics.draw(BBCSmall,LowerThirdFull.BBCBox.x+13,LowerThirdFull.BBCBox.y+7, 0 , 0.045, 0.045)
@@ -759,6 +766,38 @@ function ShowPresenterName()
         Anim.to(LowerThirdFull.PresenterSubtitle, 1, {y = 880}):ease("cubicout")
 
     end
+end
+
+--Change the name strap that is up, like the text strap does: the old name rolls out of the top, the new one rolls in from below.
+--One line to two lines (or back) changes the strap height, so the strap is taken down and put up again.
+local presenterSwapTimer
+local presenterRollId = 0
+function UpdatePresenterName(text)
+    local P, sub = LowerThirdFull.PresenterName, LowerThirdFull.PresenterSubtitle
+    if presenterSwapTimer ~= nil then Timer.cancel(presenterSwapTimer) end
+
+    local two = text:find("\n") ~= nil
+    if two ~= (P.Text:find("\n") ~= nil) then
+        HidePresenterName()
+        presenterSwapTimer = Timer.after(1.1, function()
+            P.Text = text
+            ShowPresenterName()
+        end)
+        return
+    end
+
+    presenterRollId = presenterRollId + 1
+    local id = presenterRollId
+    P.OldText, P.OldY, P.OldSubY = P.Text, P.y, sub.y
+    Anim.to(P, 0.8, {OldY = P.y - 120, OldSubY = sub.y - 120}):ease("cubicinout"):oncomplete(function()
+        if id == presenterRollId then P.OldText = nil end
+    end)
+
+    local rest, subRest = two and 813 or 860, 880
+    P.Text = text
+    P.y, sub.y = rest + 120, subRest + 120
+    Anim.to(P, 1, {y = rest}):ease("cubicinout")
+    if two then Anim.to(sub, 1, {y = subRest}):ease("cubicinout") end
 end
 
 function ShowPresenterNameSolo()
@@ -1758,19 +1797,19 @@ function ShowBreakingLowerThird(text, subtitles)
     LowerThirdFull.SingleText.Showing = false
 
     if not boxUp then
-        Timer.after(boxDelay,function() ShowLowerThirdBox("BREAKING", {184/255,0,0,1},{1,1,1,1}) end)
+        Timer.after(boxDelay,function() ShowLowerThirdBox("BREAKING", BreakingCol(1),{1,1,1,1}) end)
     end
     Timer.after(textDelay, function()
 
         if not boxUp then
             --Flash LowerThirdBox's text color
-            Timer.after(0, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,1}):ease("cubicinout") end)
-            Timer.after(0.2, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,0}):ease("cubicinout") end)
-            Timer.after(0.4, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,1}):ease("cubicinout") end)
-            Timer.after(0.6, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,0}):ease("cubicinout") end)
-            Timer.after(0.8, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,1}):ease("cubicinout") end)
-            Timer.after(1, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,0}):ease("cubicinout") end)
-            Timer.after(1.2, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, {184/255,0,0,1}):ease("cubicinout") end)
+            Timer.after(0, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(1)):ease("cubicinout") end)
+            Timer.after(0.2, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(0)):ease("cubicinout") end)
+            Timer.after(0.4, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(1)):ease("cubicinout") end)
+            Timer.after(0.6, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(0)):ease("cubicinout") end)
+            Timer.after(0.8, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(1)):ease("cubicinout") end)
+            Timer.after(1, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(0)):ease("cubicinout") end)
+            Timer.after(1.2, function() Anim.to(LowerThirdFull.LowerThirdBox.tCol, 0.2, BreakingCol(1)):ease("cubicinout") end)
         end
 
         if textInPlace then

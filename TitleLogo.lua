@@ -45,6 +45,9 @@ end
 
 --style is "chameleon" or anything else for the legacy red boxed logo
 function ShowTitleLogo(style)
+    --The titles are BBC graphics: not with a custom logo
+    if CustomLogo ~= nil then return end
+
     style = style == "chameleon" and "chameleon" or "legacy"
 
     if TitleLogo.Showing and TitleLogo.Style ~= style then
@@ -77,6 +80,8 @@ function HideTitleLogo()
 end
 
 function ShowTitleLogoInstant()
+    if CustomLogo ~= nil then return end
+
     HideLowerThirdFull()
 
     TitleLogo.Style = "legacy"

@@ -15,6 +15,9 @@ server:on("disconnect", function(data)
 end)
 
 server:on("headline", function(data)
+    --The "Election 24 Viz" look answers its own requests (see Election24.lua)
+    if E24.Active and E24.request(data) then return end
+
     if data.Type == "Show-Headline" then
         if data.Regional == nil then
             PlayoutShowHeadline(data.Text, data.Style)
@@ -80,11 +83,11 @@ server:on("headline", function(data)
     end
 
     if data.Type == "Show-PlaceName" then
-        ShowPlaceName(data.Text, data.Side)
+        ShowPlaceName(data.Text, data.Side, data.Text2)
     end
 
     if data.Type == "Show-PlaceNameWithTime" then
-        ShowPlaceNameWithTime(data.Text, data.Offset, data.Side)
+        ShowPlaceNameWithTime(data.Text, data.Offset, data.Side, data.Text2)
     end
 
     if data.Type == "Hide-PlaceName" then
@@ -92,20 +95,16 @@ server:on("headline", function(data)
     end
 
     if data.Type == "Show-PresenterName" then
-        LowerThirdFull.PresenterName.Text = data.Text
-        ShowPresenterName()
+        if LowerThirdFull.PresenterNameShowing == true then
+            UpdatePresenterName(data.Text)
+        else
+            LowerThirdFull.PresenterName.Text = data.Text
+            ShowPresenterName()
+        end
     end
 
     if data.Type == "Hide-PresenterName" then
         HidePresenterName()
-    end
-
-    if data.Type == "Show-BreakfastIntroClock" then
-        ShowBreakfastIntroClock()
-    end
-
-    if data.Type == "Hide-BreakfastIntroClock" then
-        HideBreakfastIntroClock()
     end
 
     if data.Type == "Flash" then
@@ -159,14 +158,6 @@ server:on("headline", function(data)
         ToggleBackdrop()
     end
 
-    if data.Type == "Toggle-GillMode" then
-        ToggleGillMode()
-    end
-
-    if data.Type == "Hide-Splash" then
-        HideSplash()
-    end
-
     if data.Type == "Toggle-WindowMode" then
         ToggleWindowMode()
     end
@@ -218,12 +209,15 @@ server:on("headline", function(data)
             LowerThirdFull.WhitePart.col = {254/255, 251/255, 254/255, 0.85}
         end
 
+        BreakingColor = data.BreakingColor
+        SetBrandLogo(data.LogoPNG, data.LogoMode, data.LogoColor)
+
         if data.coloredStrap == true then
             LowerThirdFull.ClearPart.col = data.ThemeColor
-            LowerThirdFull.BreakingBox.col = {255/255,0,0,1}
+            LowerThirdFull.BreakingBox.col = BreakingCol(1, {255/255,0,0})
         else
             LowerThirdFull.ClearPart.col = {0,0,0,0.8}
-            LowerThirdFull.BreakingBox.col = {0.72,0,0,1}
+            LowerThirdFull.BreakingBox.col = BreakingCol(1, {0.72,0,0})
         end
 
         --Find any occurence of the word "World" in the channel name
@@ -256,6 +250,8 @@ server:on("headline", function(data)
             HideLowerThirdClock()
             LowerThirdClock.ShowClock = false
         end
+
+        E24.setActive(data.Style == "election24")
     end
 
 
